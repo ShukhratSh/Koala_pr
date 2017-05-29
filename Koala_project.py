@@ -159,39 +159,22 @@ nbar_clean.attrs['affine'] = affine
 geom_o = warp_geometry(geom, query['crs'], crs.wkt)
 obs = transect(nbar_clean, geom_o, 25)
 
+# This is the error I am getting
+IndexError                                Traceback (most recent call last)
+<ipython-input-66-9751f77b8670> in <module>()
+      9 #Extract the observation data volume
+     10 geom_o = warp_geometry(geom, query['crs'], crs.wkt)
+---> 11 obs = transect(nbar_clean, geom_o, 25)
 
-# In[52]:
+<ipython-input-65-2ba1fee36771> in transect(data, geom, resolution, method, tolerance)
+     25     points = list(zip(*[geom.interpolate(d).coords[0] for d in dist]))
+     26     indexers = {
+---> 27         data.crs.dimensions[0]: list(points[1]),
+     28         data.crs.dimensions[1]: list(points[0])
+     29     }
 
-print('The number of time slices at this location is '+ str(nbar_clean.red.shape[0]))
+IndexError: list index out of range
 
-
-# In[54]:
-
-#select time slice of interest - this is trial and error until you get a decent image
-time_slice_i = 350
-rgb = nbar_clean.isel(time =time_slice_i).to_array(dim='color').sel(color=['red', 'nir']).transpose('y', 'x', 'color')
-#rgb = nbar_clean.isel(time =time_slice).to_array(dim='color').sel(color=['swir1', 'nir', 'green']).transpose('y', 'x', 'color')
-fake_saturation = 4500
-clipped_visible = rgb.where(rgb<fake_saturation).fillna(fake_saturation)
-max_val = clipped_visible.max(['y', 'x'])
-scaled = (clipped_visible / max_val)
-
-
-# In[56]:
-
-#View the polyline vector on the imagery
-fig = plt.figure(figsize =(12,6))
-plt.scatter(x=obs.coords['x'], y=obs.coords['y'], c='r') #turn this on or off to show location of transect
-plt.imshow(scaled, interpolation = 'nearest',
-           extent=[scaled.coords['x'].min(), scaled.coords['x'].max(), 
-                   scaled.coords['y'].min(), scaled.coords['y'].max()])
-
-date_ = nbar_clean.time[time_slice_i]
-plt.title(date_.astype('datetime64[D]'))
-plt.show()
-
-
-# In[ ]:
 
 
 
