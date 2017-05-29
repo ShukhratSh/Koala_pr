@@ -26,8 +26,9 @@ dc = datacube.Datacube(app='NDVI,SAVI calculation based on the observed points')
 
 
 # In[65]: 
-#I don't understand this part, it is complicated. I know it is converting linear vector into the string of xy coordinates, 
-#should it work for point vector file as well? Some more explanation comments would be helpful.
+#This part is complicated. I know it is converting linear vector into the string of xy coordinates, 
+#I think we should change it work for point vector file as we but just convert point shapefiel into 
+# string of coords. Some guidelines would be helpful.
 
 #This defines the function that converts a linear vector file into a string of x,y coordinates
 def geom_query(geom, geom_crs='EPSG:4326'):
@@ -41,7 +42,7 @@ def geom_query(geom, geom_crs='EPSG:4326'):
     }
 
 ''' we need to change this part since we already have points we still need to convert point shapefile into string coordinates? Honestly,
-#   I didn't understand the code below completely, I couldn't find references either. More comments and explanation would be hlpful.
+#   I didn't understand the code below completely, I couldn't find references either. More comments and explanation would be helpful.
 
 def warp_geometry(geom, crs_crs, dst_crs): # What is this function for?
     """
