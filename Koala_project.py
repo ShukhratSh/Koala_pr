@@ -25,7 +25,9 @@ import rasterio
 dc = datacube.Datacube(app='NDVI,SAVI calculation based on the observed points')
 
 
-# In[65]:
+# In[65]: 
+#I don't understand this part, it is complicated. I know it is converting linear vector into the string of xy coordinates, 
+#should it work for point vector file as well? Some more explanation comments would be helpful.
 
 #This defines the function that converts a linear vector file into a string of x,y coordinates
 def geom_query(geom, geom_crs='EPSG:4326'):
@@ -38,20 +40,24 @@ def geom_query(geom, geom_crs='EPSG:4326'):
         'crs': geom_crs
     }
 
+''' we need to change this part since we already have points we still need to convert point shapefile into string coordinates? Honestly,
+#   I didn't understand the code below completely, I couldn't find references either. More comments and explanation would be hlpful.
 
-def warp_geometry(geom, crs_crs, dst_crs):
+def warp_geometry(geom, crs_crs, dst_crs): # What is this function for?
     """
     warp geometry from crs_crs to dst_crs
     """
     return shapely.geometry.shape(rasterio.warp.transform_geom(crs_crs, dst_crs, shapely.geometry.mapping(geom)))
 
 
-def transect(data, geom, resolution, method='nearest', tolerance=None):
+def transect(data, geom, resolution, method='nearest', tolerance=None): # Is this function for splitting the line into points in a 
+                                                                        #distance of image resolution?
     """
     
     """
-    dist = [i for i in range(0, int(geom.length), resolution)]
-    points = list(zip(*[geom.interpolate(d).coords[0] for d in dist]))
+    dist = [i for i in range(0, int(geom.length), resolution)] 
+        
+    points = list(zip(*[geom.interpolate(d).coords[0] for d in dist])) #
     indexers = {
         data.crs.dimensions[0]: list(points[1]),
         data.crs.dimensions[1]: list(points[0])        
@@ -61,7 +67,7 @@ def transect(data, geom, resolution, method='nearest', tolerance=None):
                            tolerance=tolerance,
                            **indexers)
 
-
+'''
 # In[ ]:
 
 #### DEFINE SPATIOTEMPORAL RANGE AND BANDS OF INTEREST
@@ -158,8 +164,8 @@ nbar_clean.attrs['affine'] = affine
 #Extract the observation data volume
 geom_o = warp_geometry(geom, query['crs'], crs.wkt)
 obs = transect(nbar_clean, geom_o, 25)
-
-# This is the error I am getting
+'''
+# This is the error that I got
 IndexError                                Traceback (most recent call last)
 <ipython-input-66-9751f77b8670> in <module>()
       9 #Extract the observation data volume
@@ -174,7 +180,7 @@ IndexError                                Traceback (most recent call last)
      29     }
 
 IndexError: list index out of range
-
+'''
 
 
 
