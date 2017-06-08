@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[ ]:
+# In[65]:
 
 get_ipython().magic('pylab notebook')
 from __future__ import print_function
@@ -20,15 +20,12 @@ from shapely.geometry import shape
 import rasterio
 
 
-# In[ ]:
+# In[66]:
 
 dc = datacube.Datacube(app='NDVI,SAVI calculation based on the observed points')
 
 
-# In[65]: 
-#This part is complicated. I know it is converting linear vector into the string of xy coordinates, 
-#I think we should change it work for point vector file as we but just convert point shapefiel into 
-# string of coords. Some guidelines would be helpful.
+# In[67]:
 
 #This defines the function that converts a linear vector file into a string of x,y coordinates
 def geom_query(geom, geom_crs='EPSG:4326'):
@@ -41,35 +38,30 @@ def geom_query(geom, geom_crs='EPSG:4326'):
         'crs': geom_crs
     }
 
-''' we need to change this part since we already have points we still need to convert point shapefile into string coordinates? Honestly,
-#   I didn't understand the code below completely, I couldn't find references either. More comments and explanation would be helpful.
-
-def warp_geometry(geom, crs_crs, dst_crs): # What is this function for?
+def warp_geometry(geom, crs_crs, dst_crs):
     """
     warp geometry from crs_crs to dst_crs
     """
-    return shapely.geometry.shape(rasterio.warp.transform_geom(crs_crs, dst_crs, shapely.geometry.mapping(geom)))
+    return shapely.geometry.shape(rasterio.warp.transform_geom(crs_crs,dst_crs, shapely.geometry.mapping(geom)))
 
 
-def transect(data, geom, resolution, method='nearest', tolerance=None): # Is this function for splitting the line into points in a 
-                                                                        #distance of image resolution?
+def conv(data, geom, method='nearest', tolerance=None):
     """
     
     """
-    dist = [i for i in range(0, int(geom.length), resolution)] 
-        
-    points = list(zip(*[geom.interpolate(d).coords[0] for d in dist])) #
+    points = list(zip(*[geom.coords[0]]))
     indexers = {
         data.crs.dimensions[0]: list(points[1]),
         data.crs.dimensions[1]: list(points[0])        
     }
-    return data.sel_points(xr.DataArray(dist, name='distance', dims=['distance']),
+    return data.sel_points(xr.DataArray(points, name='points'),
                            method=method,
                            tolerance=tolerance,
                            **indexers)
+                        
 
-'''
-# In[ ]:
+
+# In[68]:
 
 #### DEFINE SPATIOTEMPORAL RANGE AND BANDS OF INTEREST
 #Select polyline, replacing /g/... with /*your_path_here*/your_file.shp
@@ -101,19 +93,19 @@ query.update(geom_query(geom))
 query['crs'] = 'EPSG:4326'
 
 
-# In[ ]:
+# In[69]:
 
 print (query)
 
 
-# In[ ]:
+# In[70]:
 
 #Group PQ by solar day to avoid idiosyncracies of N/S overlap differences in PQ algorithm performance
 pq_albers_product = dc.index.products.get_by_name(sensors[0]+'_pq_albers')
 valid_bit = pq_albers_product.measurements['pixelquality']['flags_definition']['contiguous']['bits']
 
 
-# In[ ]:
+# In[71]:
 
 #Define which pixel quality artefacts you want removed from the results
 mask_components = {'cloud_acca':'no_cloud',
@@ -129,7 +121,7 @@ mask_components = {'cloud_acca':'no_cloud',
 'contiguous':True}
 
 
-# In[ ]:
+# In[72]:
 
 #retrieve the NBAR and PQ for the spatiotemporal range of interest
 
@@ -152,7 +144,7 @@ for sensor in sensors:
     sensor_clean[sensor] = sensor_nbar
 
 
-# In[66]:
+# In[73]:
 
 
 #Concatenate the data from different sensors together and sort by time
@@ -164,24 +156,56 @@ nbar_clean.attrs['affine'] = affine
 
 #Extract the observation data volume
 geom_o = warp_geometry(geom, query['crs'], crs.wkt)
-obs = transect(nbar_clean, geom_o, 25)
-'''
-# This is the error that I got
-IndexError                                Traceback (most recent call last)
-<ipython-input-66-9751f77b8670> in <module>()
-      9 #Extract the observation data volume
-     10 geom_o = warp_geometry(geom, query['crs'], crs.wkt)
----> 11 obs = transect(nbar_clean, geom_o, 25)
+obs = conv(nbar_clean, geom_o)
 
-<ipython-input-65-2ba1fee36771> in transect(data, geom, resolution, method, tolerance)
-     25     points = list(zip(*[geom.interpolate(d).coords[0] for d in dist]))
-     26     indexers = {
----> 27         data.crs.dimensions[0]: list(points[1]),
-     28         data.crs.dimensions[1]: list(points[0])
-     29     }
 
-IndexError: list index out of range
-'''
+# In[74]:
 
+print('The number of time slices at this location is '+ str(nbar_clean.red.shape[0]))
+
+
+# In[75]:
+
+#select time slice of interest - this is trial and error until you get a decent image
+time_slice_i = 280
+rgb = nbar_clean.isel(time =time_slice_i).to_array(dim='color').sel(color=['red', 'nir']).transpose('y', 'x', 'color')
+#rgb = nbar_clean.isel(time =time_slice).to_array(dim='color').sel(color=['swir1', 'nir', 'green']).transpose('y', 'x', 'color')
+fake_saturation = 4500
+clipped_visible = rgb.where(rgb<fake_saturation).fillna(fake_saturation)
+max_val = clipped_visible.max(['y', 'x'])
+scaled = (clipped_visible / max_val)
+
+
+# In[76]:
+
+#View the vector points on the imagery
+fig = plt.figure(figsize =(6,6))
+plt.scatter(x=geom_o.coords['x'], y=geom_o.coords['y'], c='r') #turn this on or off to show location of transect
+plt.imshow(scaled, interpolation = 'nearest',
+           extent=[scaled.coords['x'].min(), scaled.coords['x'].max(), 
+                   scaled.coords['y'].min(), scaled.coords['y'].max()])
+
+date_ = nbar_clean.time[time_slice_i]
+plt.title(date_.astype('datetime64[D]'))
+plt.show()
+
+
+# In[ ]:
+TypeError                                 Traceback (most recent call last)
+<ipython-input-76-fb93d6d7bc2f> in <module>()
+      1 #View the vector points on the imagery
+      2 fig = plt.figure(figsize =(6,6))
+----> 3 plt.scatter(x=geom_o.coords['x'], y=geom_o.coords['y'], c='r') #turn this on or off to show location of transect
+      4 plt.imshow(scaled, interpolation = 'nearest',
+      5            extent=[scaled.coords['x'].min(), scaled.coords['x'].max(), 
+
+/g/data/v10/public/modules/agdc-py3-env/20170427/envs/agdc/lib/python3.6/site-packages/shapely/coords.py in __getitem__(self, key)
+    122             return res
+    123         else:
+--> 124             raise TypeError("key must be an index or slice")
+    125 
+    126     @property
+
+TypeError: key must be an index or slice
 
 
