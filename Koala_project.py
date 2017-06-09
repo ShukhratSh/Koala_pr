@@ -1,7 +1,6 @@
-
 # coding: utf-8
 
-# In[65]:
+# In[100]:
 
 get_ipython().magic('pylab notebook')
 from __future__ import print_function
@@ -20,12 +19,12 @@ from shapely.geometry import shape
 import rasterio
 
 
-# In[66]:
+# In[101]:
 
 dc = datacube.Datacube(app='NDVI,SAVI calculation based on the observed points')
 
 
-# In[67]:
+# In[102]:
 
 #This defines the function that converts a linear vector file into a string of x,y coordinates
 def geom_query(geom, geom_crs='EPSG:4326'):
@@ -49,6 +48,7 @@ def conv(data, geom, method='nearest', tolerance=None):
     """
     
     """
+    
     points = list(zip(*[geom.coords[0]]))
     indexers = {
         data.crs.dimensions[0]: list(points[1]),
@@ -61,7 +61,7 @@ def conv(data, geom, method='nearest', tolerance=None):
                         
 
 
-# In[68]:
+# In[103]:
 
 #### DEFINE SPATIOTEMPORAL RANGE AND BANDS OF INTEREST
 #Select polyline, replacing /g/... with /*your_path_here*/your_file.shp
@@ -93,19 +93,19 @@ query.update(geom_query(geom))
 query['crs'] = 'EPSG:4326'
 
 
-# In[69]:
+# In[104]:
 
 print (query)
 
 
-# In[70]:
+# In[105]:
 
 #Group PQ by solar day to avoid idiosyncracies of N/S overlap differences in PQ algorithm performance
 pq_albers_product = dc.index.products.get_by_name(sensors[0]+'_pq_albers')
 valid_bit = pq_albers_product.measurements['pixelquality']['flags_definition']['contiguous']['bits']
 
 
-# In[71]:
+# In[106]:
 
 #Define which pixel quality artefacts you want removed from the results
 mask_components = {'cloud_acca':'no_cloud',
@@ -121,7 +121,7 @@ mask_components = {'cloud_acca':'no_cloud',
 'contiguous':True}
 
 
-# In[72]:
+# In[107]:
 
 #retrieve the NBAR and PQ for the spatiotemporal range of interest
 
@@ -144,7 +144,7 @@ for sensor in sensors:
     sensor_clean[sensor] = sensor_nbar
 
 
-# In[73]:
+# In[108]:
 
 
 #Concatenate the data from different sensors together and sort by time
@@ -159,12 +159,12 @@ geom_o = warp_geometry(geom, query['crs'], crs.wkt)
 obs = conv(nbar_clean, geom_o)
 
 
-# In[74]:
+# In[109]:
 
 print('The number of time slices at this location is '+ str(nbar_clean.red.shape[0]))
 
 
-# In[75]:
+# In[110]:
 
 #select time slice of interest - this is trial and error until you get a decent image
 time_slice_i = 280
@@ -176,14 +176,14 @@ max_val = clipped_visible.max(['y', 'x'])
 scaled = (clipped_visible / max_val)
 
 
-# In[76]:
+# In[111]:
 
 #View the vector points on the imagery
 fig = plt.figure(figsize =(6,6))
-plt.scatter(x=geom_o.coords['x'], y=geom_o.coords['y'], c='r') #turn this on or off to show location of transect
+plt.scatter(x=geom_o.x, y=geom_o.y, c='r') #turn this on or off to show location of transect
 plt.imshow(scaled, interpolation = 'nearest',
-           extent=[scaled.coords['x'].min(), scaled.coords['x'].max(), 
-                   scaled.coords['y'].min(), scaled.coords['y'].max()])
+           extent=[scaled.x.min(), scaled.x.max(), 
+                   scaled.y.min(), scaled.y.max()])
 
 date_ = nbar_clean.time[time_slice_i]
 plt.title(date_.astype('datetime64[D]'))
@@ -191,21 +191,43 @@ plt.show()
 
 
 # In[ ]:
+
+
+---------------------------------------------------------------------------
 TypeError                                 Traceback (most recent call last)
-<ipython-input-76-fb93d6d7bc2f> in <module>()
-      1 #View the vector points on the imagery
-      2 fig = plt.figure(figsize =(6,6))
-----> 3 plt.scatter(x=geom_o.coords['x'], y=geom_o.coords['y'], c='r') #turn this on or off to show location of transect
+<ipython-input-111-cf28e3136062> in <module>()
       4 plt.imshow(scaled, interpolation = 'nearest',
-      5            extent=[scaled.coords['x'].min(), scaled.coords['x'].max(), 
+      5            extent=[scaled.x.min(), scaled.x.max(), 
+----> 6                    scaled.y.min(), scaled.y.max()])
+      7 
+      8 date_ = nbar_clean.time[time_slice_i]
 
-/g/data/v10/public/modules/agdc-py3-env/20170427/envs/agdc/lib/python3.6/site-packages/shapely/coords.py in __getitem__(self, key)
-    122             return res
-    123         else:
---> 124             raise TypeError("key must be an index or slice")
-    125 
-    126     @property
+/g/data/v10/public/modules/agdc-py3-env/20170427/envs/agdc/lib/python3.6/site-packages/matplotlib/pyplot.py in imshow(X, cmap, norm, aspect, interpolation, alpha, vmin, vmax, origin, extent, shape, filternorm, filterrad, imlim, resample, url, hold, data, **kwargs)
+   3156                         filternorm=filternorm, filterrad=filterrad,
+   3157                         imlim=imlim, resample=resample, url=url, data=data,
+-> 3158                         **kwargs)
+   3159     finally:
+   3160         ax._hold = washold
 
-TypeError: key must be an index or slice
+/g/data/v10/public/modules/agdc-py3-env/20170427/envs/agdc/lib/python3.6/site-packages/matplotlib/__init__.py in inner(ax, *args, **kwargs)
+   1890                     warnings.warn(msg % (label_namer, func.__name__),
+   1891                                   RuntimeWarning, stacklevel=2)
+-> 1892             return func(ax, *args, **kwargs)
+   1893         pre_doc = inner.__doc__
+   1894         if pre_doc is None:
 
+/g/data/v10/public/modules/agdc-py3-env/20170427/envs/agdc/lib/python3.6/site-packages/matplotlib/axes/_axes.py in imshow(self, X, cmap, norm, aspect, interpolation, alpha, vmin, vmax, origin, extent, shape, filternorm, filterrad, imlim, resample, url, **kwargs)
+   5116                               resample=resample, **kwargs)
+   5117 
+-> 5118         im.set_data(X)
+   5119         im.set_alpha(alpha)
+   5120         if im.get_clip_path() is None:
 
+/g/data/v10/public/modules/agdc-py3-env/20170427/envs/agdc/lib/python3.6/site-packages/matplotlib/image.py in set_data(self, A)
+    547         if (self._A.ndim not in (2, 3) or
+    548                 (self._A.ndim == 3 and self._A.shape[-1] not in (3, 4))):
+--> 549             raise TypeError("Invalid dimensions for image data")
+    550 
+    551         self._imcache = None
+
+TypeError: Invalid dimensions for image data
